@@ -41,9 +41,27 @@ setInterval(() => {
 
 export function handleWsMessage(ws: ServerWebSocket<any>, message: string | Buffer) {
   try {
+    if (typeof message !== 'string') {
+      // Fast path for binary PIXEL_FRAME
+      const buf = Buffer.isBuffer(message) ? message : Buffer.from(message);
+      if (buf.length >= 3 && buf[0] === 1) { // Type 1 = PIXEL_FRAME
+        const offset = buf.readUInt16LE(1);
+        const pixels = new Uint8Array(buf.buffer, buf.byteOffset + 3, buf.length - 3);
+        const frame: PixelFrame = {
+          pixels,
+          offset,
+          timestamp: Date.now(),
+        };
+        pipeline.feed(frame);
+        frameCount++;
+      }
+      return;
+    }
+
     const msg: WsMessage = JSON.parse(message.toString());
     switch (msg.type) {
       case 'PIXEL_FRAME': {
+        // Fallback for old JSON pixel frames
         if (msg.payload) {
           const frame: PixelFrame = {
             pixels: new Uint8Array(msg.payload.pixels),

@@ -100,8 +100,20 @@ export function useDriverSocket(): UseDriverSocket {
   }, []);
 
   const sendPixelFrame = useCallback((pixels: Uint8Array, offset = 0) => {
-    send('PIXEL_FRAME', { pixels: Array.from(pixels), offset, timestamp: Date.now() });
-  }, [send]);
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      // Send PIXEL_FRAME as binary to save CPU/Network:
+      // Byte 0: 1 (message type = PIXEL_FRAME)
+      // Byte 1-2: offset (uint16 little-endian)
+      // Byte 3+: pixels
+      const buf = new ArrayBuffer(3 + pixels.length);
+      const view = new DataView(buf);
+      view.setUint8(0, 1);
+      view.setUint16(1, offset, true);
+      const dst = new Uint8Array(buf, 3);
+      dst.set(pixels);
+      wsRef.current.send(buf);
+    }
+  }, []);
 
   const setMode = useCallback((mode: DriverMode) => {
     send('SET_MODE', { mode });

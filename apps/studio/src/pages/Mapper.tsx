@@ -17,12 +17,28 @@ const DEFAULT_TUBES: Tube[] = [
   { id: 'tube-2', x: 100, y: 200, width: 400, height: 20, ledStart: 50, ledCount: 50, rotation: 0 },
 ];
 
+const STORAGE_KEY = 'vandaled-tubes';
+
+function loadTubes(): Tube[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : DEFAULT_TUBES;
+  } catch {
+    return DEFAULT_TUBES;
+  }
+}
+
 export function Mapper() {
   const { driverState } = useDriver();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [tubes, setTubes] = useState<Tube[]>(DEFAULT_TUBES);
+  const [tubes, setTubes] = useState<Tube[]>(loadTubes);
   const [dragState, setDragState] = useState<{ tubeId: string; offsetX: number; offsetY: number } | null>(null);
   const [selectedTube, setSelectedTube] = useState<string | null>(null);
+
+  // Save changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tubes));
+  }, [tubes]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;

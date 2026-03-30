@@ -75,6 +75,7 @@ A lightweight React app that acts as a software-rendered LED strip. It listens f
 | [`docs/AUDIO.md`](./docs/AUDIO.md) | Audio pipeline — FFT, frequency band mapping, wired line-in vs. Web Audio API |
 | [`docs/PROGRESS.md`](./docs/PROGRESS.md) | The current developmental state, accomplishments, and roadmap of next steps for the framework |
 | [`docs/AI_INIT_PROMPT.md`](./docs/AI_INIT_PROMPT.md) | The AI agent prompt to scaffold the full project in Cursor/Windsurf |
+| [`GUIDE.md`](./GUIDE.md) | Detailed user guide for using the Studio software, audio engine, and troubleshooting |
 
 ---
 
