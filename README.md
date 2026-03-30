@@ -1,4 +1,4 @@
-# v.andal lights
+# vandaLED
 
 > A professional-grade, modular LED lighting system built for DJs, developers, and installations. Designed to run standalone, react to audio, and be fully programmable from a custom UI or terminal.
 
@@ -6,7 +6,7 @@
 
 ## What This Is
 
-`v.andal lights` is a full-stack IoT lighting system built around addressable LED strips housed in frosted silicone tubing. It is designed to:
+`vandaLED` is a full-stack IoT lighting system built around addressable LED strips housed in frosted silicone tubing. It is designed to:
 
 - **Run standalone** — react to audio from a DJ controller via a wired line-in with no laptop required
 - **Be overridden wirelessly** — when a laptop is present, stream custom pixel data at 60+ FPS over Wi-Fi via the DDP protocol
@@ -20,7 +20,7 @@ Think of it as three layers: the **hardware** (LED tubes + ESP32 controller), th
 ## Monorepo Structure
 
 ```
-vandal-lights/
+vandaLED/
 ├── apps/
 │   ├── studio/          # React + Vite — Visual design UI & control dashboard
 │   ├── driver/          # Bun + Hono — DDP streamer, audio FFT engine, API bridge
@@ -53,7 +53,7 @@ The Bun/Hono server that runs on your laptop (or a Raspberry Pi for a permanent 
 - Falls back gracefully when the hardware is offline (redirects to emulator)
 
 ### `apps/studio` — The Studio
-A React/Vite single-page app with a dark, high-contrast "v.andal" aesthetic. It provides:
+A React/Vite single-page app with a dark, high-contrast "vandaLED" aesthetic. It provides:
 - A **Visual Pixel Mapper** — drag your tubes onto a canvas to match their physical layout
 - A **Color & Effect Picker** — design static or animated palettes
 - A **Frequency Visualizer** — see real-time FFT bands and map them to LED segments
@@ -81,8 +81,8 @@ A lightweight React app that acts as a software-rendered LED strip. It listens f
 
 ```bash
 # Clone and install
-git clone https://github.com/your-org/vandal-lights.git
-cd vandal-lights
+git clone https://github.com/your-org/vandaLED.git
+cd vandaLED
 bun install
 
 # Start everything in dev mode (driver + studio + emulator)

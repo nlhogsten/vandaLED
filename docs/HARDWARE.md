@@ -1,6 +1,6 @@
 # Hardware
 
-> Bill of materials, wiring guide, and step-by-step assembly for the v.andal LED rig.
+> Bill of materials, wiring guide, and step-by-step assembly for the vandaLED LED rig.
 
 ---
 

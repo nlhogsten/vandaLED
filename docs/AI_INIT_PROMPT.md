@@ -1,6 +1,6 @@
 # AI Init Prompt
 
-> Copy the prompt below into Cursor, Windsurf, or any AI code editor agent to scaffold the full v.andal monorepo. Read the notes first.
+> Copy the prompt below into Cursor, Windsurf, or any AI code editor agent to scaffold the full vandaLED monorepo. Read the notes first.
 
 ---
 
@@ -16,7 +16,7 @@
 ## The Prompt
 
 ```
-You are a Senior Systems Architect and TypeScript engineer. We are building "v.andal lights" — a professional-grade, modular LED lighting system. This is not a prototype or tutorial project. Build it to production standards from the start.
+You are a Senior Systems Architect and TypeScript engineer. We are building "vandaLED" — a professional-grade, modular LED lighting system. This is not a prototype or tutorial project. Build it to production standards from the start.
 
 ---
 
@@ -56,7 +56,7 @@ The system has three tiers:
 Initialize a Bun workspace monorepo with this exact structure:
 
 ```
-vandal-lights/
+vandaLED/
 ├── apps/
 │   ├── studio/          (React + Vite, TypeScript)
 │   ├── driver/          (Bun + Hono, TypeScript)
@@ -236,13 +236,13 @@ Split into two parts:
 
 **Bun UDP server** (`server/`):
 - Listens on `0.0.0.0:4048` for UDP DDP packets
-- Parses packets using `@vandal/ddp-engine`
+- Parses packets using `@vandaLED/ddp-engine`
 - Broadcasts parsed pixel data to all connected WebSocket clients
 - Counts and reports incoming FPS
 
 **React Vite frontend** (`client/`):
 - Connects to the emulator WebSocket server
-- Renders a grid of `<PixelDot>` components (from `@vandal/ui-components`)
+- Renders a grid of `<PixelDot>` components (from `@vandaLED/ui-components`)
 - Grid dimensions configurable (default: 10 rows × 10 columns = 100 LEDs)
 - Shows FPS counter, LED count, and connection status
 - Can be resized to simulate different strip configurations
@@ -266,7 +266,7 @@ If `--ip` is not provided, targets localhost (emulator).
 
 ```json
 {
-  "name": "vandal-lights",
+  "name": "vandaLED",
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {

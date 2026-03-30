@@ -1,6 +1,6 @@
 # Protocols
 
-> Every communication protocol used in the v.andal system, explained for developers.
+> Every communication protocol used in the vandaLED system, explained for developers.
 
 ---
 

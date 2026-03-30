@@ -1,6 +1,6 @@
 # Architecture
 
-> How the v.andal system is structured, how data flows through it, and why each technology was chosen.
+> How the vandaLED system is structured, how data flows through it, and why each technology was chosen.
 
 ---
 
