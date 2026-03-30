@@ -1,29 +1,44 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useDriver } from '../context/DriverContext';
-import { StatusBadge, Knob, FrequencyBar } from '@vandaled/ui-components';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FrequencyBar, Knob, StatusBadge } from '@vandaled/ui-components';
 import type { ConnectionStatus } from '@vandaled/ui-components';
+import { LayoutLedPoint } from '@vandaled/layout-engine';
+import { useDriver } from '../context/DriverContext';
 import { useThrottledStream } from '../hooks/useThrottledStream';
 import {
   DEFAULT_OVERRIDE_EFFECT,
+  DEFAULT_REACTIVE_PROGRAM,
+  DEFAULT_SPATIAL_EFFECT,
   EffectId,
   OVERRIDE_EFFECT_EVENT,
-  OverrideEffectConfig,
   PRESET_ACTIVATED_EVENT,
+  PROGRAM_DRAFT_EVENT,
+  ProgramConfig,
+  REACTIVE_PROGRAM_EVENT,
+  ReactiveProgramConfig,
+  SPATIAL_EFFECT_EVENT,
+  SpatialEffectId,
+  EffectProgramConfig,
+  SpatialProgramConfig,
   loadOverrideEffectConfig,
+  loadProgramDraft,
+  loadReactiveProgramConfig,
+  loadSpatialEffectConfig,
   saveOverrideEffectConfig,
+  saveProgramDraft,
+  saveReactiveProgramConfig,
+  saveSpatialEffectConfig,
 } from '../lib/override-state';
 import {
-  TUBE_LAYOUT_EVENT,
-  getTubeLayoutLogicalLedCount,
-  getTubeLayoutPhysicalLedCount,
-  loadTubeLayout,
-  remapPixelsToTubeLayout,
-  Tube,
+  HARDWARE_LAYOUT_EVENT,
+  getDerivedLayout,
+  loadHardwareLayout,
+  remapPixels,
 } from '../lib/mapper';
 
-type EffectFn = (ledCount: number, t: number, config: EffectConfig) => Uint8Array;
+type ControlTab = 'status' | 'static' | 'spatial' | 'audio';
+type EffectFn = (ledCount: number, t: number, config: EffectRenderConfig) => Uint8Array;
 
-interface EffectConfig {
+interface EffectRenderConfig {
   speed: number;
   intensity: number;
   color1: [number, number, number];
@@ -41,7 +56,7 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
 
 const EFFECTS: Record<EffectId, { label: string; fn: EffectFn }> = {
   solid: {
-    label: 'Solid Color',
+    label: 'Solid',
     fn: (count, _t, cfg) => {
       const px = new Uint8Array(count * 3);
       for (let i = 0; i < count; i++) {
@@ -53,13 +68,11 @@ const EFFECTS: Record<EffectId, { label: string; fn: EffectFn }> = {
     },
   },
   rainbow: {
-    label: 'Rainbow Cycle',
-    fn: (count, t, cfg) => {
+    label: 'Rainbow',
+    fn: (count, t) => {
       const px = new Uint8Array(count * 3);
-      const speed = cfg.speed / 20;
       for (let i = 0; i < count; i++) {
-        const hue = ((i / count) * 360 + t * speed) % 360;
-        const [r, g, b] = hslToRgb(hue, 100, 50);
+        const [r, g, b] = hslToRgb(((i / Math.max(count, 1)) * 360 + t * 2) % 360, 100, 50);
         px[i * 3] = r;
         px[i * 3 + 1] = g;
         px[i * 3 + 2] = b;
@@ -71,25 +84,23 @@ const EFFECTS: Record<EffectId, { label: string; fn: EffectFn }> = {
     label: 'Pulse',
     fn: (count, t, cfg) => {
       const px = new Uint8Array(count * 3);
-      const speed = cfg.speed / 30;
-      const intensity = (Math.sin(t * speed * 0.1) + 1) / 2;
+      const amount = (Math.sin(t * cfg.speed * 0.02) + 1) / 2;
       for (let i = 0; i < count; i++) {
-        px[i * 3] = Math.round(cfg.color1[0] * intensity);
-        px[i * 3 + 1] = Math.round(cfg.color1[1] * intensity);
-        px[i * 3 + 2] = Math.round(cfg.color1[2] * intensity);
+        px[i * 3] = Math.round(cfg.color1[0] * amount);
+        px[i * 3 + 1] = Math.round(cfg.color1[1] * amount);
+        px[i * 3 + 2] = Math.round(cfg.color1[2] * amount);
       }
       return px;
     },
   },
   chase: {
-    label: 'Color Chase',
+    label: 'Chase',
     fn: (count, t, cfg) => {
       const px = new Uint8Array(count * 3);
-      const speed = cfg.speed / 10;
-      const width = Math.max(2, Math.floor(count * (cfg.intensity / 100) * 0.5));
-      const pos = Math.floor(t * speed) % count;
+      const head = Math.floor(t * Math.max(0.4, cfg.speed / 30)) % Math.max(count, 1);
+      const width = Math.max(2, Math.floor(Math.max(count, 1) * (cfg.intensity / 100) * 0.35));
       for (let i = 0; i < count; i++) {
-        const dist = (i - pos + count) % count;
+        const dist = (i - head + count) % count;
         if (dist < width) {
           const fade = 1 - dist / width;
           px[i * 3] = Math.round(cfg.color1[0] * fade + cfg.color2[0] * (1 - fade));
@@ -101,13 +112,12 @@ const EFFECTS: Record<EffectId, { label: string; fn: EffectFn }> = {
     },
   },
   gradient: {
-    label: 'Dual Gradient',
+    label: 'Gradient',
     fn: (count, t, cfg) => {
       const px = new Uint8Array(count * 3);
-      const speed = cfg.speed / 50;
-      const shift = (Math.sin(t * speed * 0.05) + 1) / 2;
+      const shift = (Math.sin(t * cfg.speed * 0.01) + 1) / 2;
       for (let i = 0; i < count; i++) {
-        const mix = (i / count + shift) % 1;
+        const mix = ((i / Math.max(count, 1)) + shift) % 1;
         px[i * 3] = Math.round(cfg.color1[0] * (1 - mix) + cfg.color2[0] * mix);
         px[i * 3 + 1] = Math.round(cfg.color1[1] * (1 - mix) + cfg.color2[1] * mix);
         px[i * 3 + 2] = Math.round(cfg.color1[2] * (1 - mix) + cfg.color2[2] * mix);
@@ -119,9 +129,8 @@ const EFFECTS: Record<EffectId, { label: string; fn: EffectFn }> = {
     label: 'Sparkle',
     fn: (count, _t, cfg) => {
       const px = new Uint8Array(count * 3);
-      const density = cfg.intensity / 100;
       for (let i = 0; i < count; i++) {
-        if (Math.random() < density * 0.3) {
+        if (Math.random() < cfg.intensity / 220) {
           px[i * 3] = cfg.color1[0];
           px[i * 3 + 1] = cfg.color1[1];
           px[i * 3 + 2] = cfg.color1[2];
@@ -134,30 +143,27 @@ const EFFECTS: Record<EffectId, { label: string; fn: EffectFn }> = {
     label: 'Fire',
     fn: (count, t, cfg) => {
       const px = new Uint8Array(count * 3);
-      const speed = cfg.speed / 25;
       for (let i = 0; i < count; i++) {
-        const flicker = Math.random() * 0.4 + 0.6;
-        const wave = (Math.sin(i * 0.3 + t * speed * 0.1) + 1) / 2;
-        const heat = flicker * wave * (cfg.intensity / 100);
+        const wave = (Math.sin(i * 0.35 + t * cfg.speed * 0.015) + 1) / 2;
+        const heat = wave * (cfg.intensity / 100) * (0.65 + Math.random() * 0.35);
         px[i * 3] = Math.round(255 * heat);
-        px[i * 3 + 1] = Math.round(100 * heat * heat);
-        px[i * 3 + 2] = Math.round(20 * heat * heat * heat);
+        px[i * 3 + 1] = Math.round(110 * heat * heat);
+        px[i * 3 + 2] = Math.round(24 * heat * heat * heat);
       }
       return px;
     },
   },
   ocean: {
-    label: 'Ocean Wave',
+    label: 'Ocean',
     fn: (count, t, cfg) => {
       const px = new Uint8Array(count * 3);
-      const speed = cfg.speed / 30;
       for (let i = 0; i < count; i++) {
-        const wave1 = (Math.sin(i * 0.15 + t * speed * 0.08) + 1) / 2;
-        const wave2 = (Math.sin(i * 0.08 - t * speed * 0.05) + 1) / 2;
-        const combined = wave1 * 0.6 + wave2 * 0.4;
-        px[i * 3] = 0;
-        px[i * 3 + 1] = Math.round(150 * combined + 50);
-        px[i * 3 + 2] = Math.round(255 * combined);
+        const wave1 = (Math.sin(i * 0.15 + t * cfg.speed * 0.01) + 1) / 2;
+        const wave2 = (Math.sin(i * 0.08 - t * cfg.speed * 0.007) + 1) / 2;
+        const mix = wave1 * 0.55 + wave2 * 0.45;
+        px[i * 3] = Math.round(cfg.color1[0] * 0.2 * mix);
+        px[i * 3 + 1] = Math.round(cfg.color1[1] * 0.4 * mix + cfg.color2[1] * 0.4);
+        px[i * 3 + 2] = Math.round(140 + 115 * mix);
       }
       return px;
     },
@@ -165,23 +171,72 @@ const EFFECTS: Record<EffectId, { label: string; fn: EffectFn }> = {
 };
 
 function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  const clean = hex.replace('#', '');
+  return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)];
+}
+
+function mixColors(a: [number, number, number], b: [number, number, number], amount: number): [number, number, number] {
+  return [
+    Math.round(a[0] * (1 - amount) + b[0] * amount),
+    Math.round(a[1] * (1 - amount) + b[1] * amount),
+    Math.round(a[2] * (1 - amount) + b[2] * amount),
+  ];
+}
+
+function getSpatialPixels(points: LayoutLedPoint[], tick: number, config: SpatialProgramConfig) {
+  const pixels = new Uint8Array(points.length * 3);
+  const c1 = hexToRgb(config.color1);
+  const c2 = hexToRgb(config.color2);
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const minX = Math.min(...xs, 0);
+  const maxX = Math.max(...xs, 1);
+  const minY = Math.min(...ys, 0);
+  const maxY = Math.max(...ys, 1);
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const radiusMax = Math.max(1, Math.hypot(maxX - centerX, maxY - centerY));
+
+  points.forEach((point, index) => {
+    let amount = 0;
+    if (config.effectId === 'radial') {
+      amount = Math.hypot(point.x - centerX, point.y - centerY) / radiusMax;
+      amount = (amount + (Math.sin(tick * config.speed * 0.01) + 1) * 0.15) % 1;
+    } else if (config.effectId === 'orbit') {
+      const angle = Math.atan2(point.y - centerY, point.x - centerX);
+      amount = ((angle / (Math.PI * 2)) + 0.5 + tick * config.speed * 0.0025) % 1;
+    } else {
+      amount = ((point.x - minX) / Math.max(1, maxX - minX) + tick * config.speed * 0.003) % 1;
+    }
+
+    const shimmer = 0.65 + (config.intensity / 100) * 0.35;
+    const [r, g, b] = mixColors(c1, c2, amount);
+    pixels[index * 3] = Math.round(r * shimmer);
+    pixels[index * 3 + 1] = Math.round(g * shimmer);
+    pixels[index * 3 + 2] = Math.round(b * shimmer);
+  });
+
+  return pixels;
+}
+
+function getSpatialTab(program: ProgramConfig['kind']): ControlTab {
+  if (program === 'reactive') return 'audio';
+  if (program === 'spatial') return 'spatial';
+  return 'static';
 }
 
 export function Control() {
   const { status, driverState, fps, setMode, send } = useDriver();
-  const [activeTab, setActiveTab] = useState<'status' | 'effects' | 'audio'>('status');
-  const [effectConfig, setEffectConfig] = useState<OverrideEffectConfig>(loadOverrideEffectConfig);
-  const [tubes, setTubes] = useState<Tube[]>(loadTubeLayout);
-  const logicalLedCount = tubes.length > 0
-    ? getTubeLayoutLogicalLedCount(tubes)
-    : driverState?.ledCount ?? 100;
-  const physicalLedCount = Math.max(
-    driverState?.ledCount ?? 100,
-    tubes.length > 0 ? getTubeLayoutPhysicalLedCount(tubes) : 0
-  );
-  const { pushFrame, currentPixels } = useThrottledStream(effectConfig.targetFps);
+  const [activeTab, setActiveTab] = useState<ControlTab>('status');
+  const [effectConfig, setEffectConfig] = useState<EffectProgramConfig>(loadOverrideEffectConfig);
+  const [spatialConfig, setSpatialConfig] = useState<SpatialProgramConfig>(loadSpatialEffectConfig);
+  const [reactiveConfig, setReactiveConfig] = useState<ReactiveProgramConfig>(loadReactiveProgramConfig);
+  const [layout, setLayout] = useState(loadHardwareLayout);
+  const derivedLayout = useMemo(() => getDerivedLayout(layout), [layout]);
+  const logicalLedCount = derivedLayout.logicalLedCount || driverState?.ledCount || 100;
+  const physicalLedCount = Math.max(driverState?.ledCount ?? 100, derivedLayout.physicalLedCount);
+  const effectStream = useThrottledStream(effectConfig.targetFps);
+  const spatialStream = useThrottledStream(spatialConfig.targetFps);
   const hwStatus: ConnectionStatus = status !== 'connected'
     ? 'disconnected'
     : driverState?.transport === 'emulator'
@@ -194,57 +249,69 @@ export function Control() {
 
   const stopAudioRef = useRef<() => void>(() => {});
   const stopEffectRef = useRef<() => void>(() => {});
+  const stopSpatialRef = useRef<() => void>(() => {});
+
+  useEffect(() => saveOverrideEffectConfig(effectConfig), [effectConfig]);
+  useEffect(() => saveSpatialEffectConfig(spatialConfig), [spatialConfig]);
+  useEffect(() => saveReactiveProgramConfig(reactiveConfig), [reactiveConfig]);
 
   useEffect(() => {
-    saveOverrideEffectConfig(effectConfig);
-  }, [effectConfig]);
+    const syncLayout = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      setLayout(detail ?? loadHardwareLayout());
+    };
+    const syncStatic = (event: Event) => setEffectConfig((event as CustomEvent<EffectProgramConfig>).detail ?? loadOverrideEffectConfig());
+    const syncSpatial = (event: Event) => setSpatialConfig((event as CustomEvent<SpatialProgramConfig>).detail ?? loadSpatialEffectConfig());
+    const syncReactive = (event: Event) => setReactiveConfig((event as CustomEvent<ReactiveProgramConfig>).detail ?? loadReactiveProgramConfig());
+    const syncDraft = (event: Event) => {
+      const detail = (event as CustomEvent<ProgramConfig>).detail ?? loadProgramDraft();
+      setActiveTab(getSpatialTab(detail.kind));
+    };
+    const syncPresetActivation = (event: Event) => {
+      const detail = (event as CustomEvent<{ program: ProgramConfig }>).detail;
+      if (detail?.program) {
+        setActiveTab(getSpatialTab(detail.program.kind));
+      }
+    };
 
-  useEffect(() => {
-    const handleLayoutChange = (event: Event) => {
-      const detail = (event as CustomEvent<Tube[]>).detail;
-      setTubes(Array.isArray(detail) ? detail : loadTubeLayout());
-    };
-    const handleEffectChange = (event: Event) => {
-      const detail = (event as CustomEvent<OverrideEffectConfig>).detail;
-      setEffectConfig(detail ?? loadOverrideEffectConfig());
-    };
-    const handlePresetActivation = () => {
-      setActiveTab('effects');
-    };
-
-    window.addEventListener(TUBE_LAYOUT_EVENT, handleLayoutChange);
-    window.addEventListener(OVERRIDE_EFFECT_EVENT, handleEffectChange);
-    window.addEventListener(PRESET_ACTIVATED_EVENT, handlePresetActivation);
+    window.addEventListener(HARDWARE_LAYOUT_EVENT, syncLayout);
+    window.addEventListener(OVERRIDE_EFFECT_EVENT, syncStatic);
+    window.addEventListener(SPATIAL_EFFECT_EVENT, syncSpatial);
+    window.addEventListener(REACTIVE_PROGRAM_EVENT, syncReactive);
+    window.addEventListener(PROGRAM_DRAFT_EVENT, syncDraft);
+    window.addEventListener(PRESET_ACTIVATED_EVENT, syncPresetActivation);
 
     return () => {
-      window.removeEventListener(TUBE_LAYOUT_EVENT, handleLayoutChange);
-      window.removeEventListener(OVERRIDE_EFFECT_EVENT, handleEffectChange);
-      window.removeEventListener(PRESET_ACTIVATED_EVENT, handlePresetActivation);
+      window.removeEventListener(HARDWARE_LAYOUT_EVENT, syncLayout);
+      window.removeEventListener(OVERRIDE_EFFECT_EVENT, syncStatic);
+      window.removeEventListener(SPATIAL_EFFECT_EVENT, syncSpatial);
+      window.removeEventListener(REACTIVE_PROGRAM_EVENT, syncReactive);
+      window.removeEventListener(PROGRAM_DRAFT_EVENT, syncDraft);
+      window.removeEventListener(PRESET_ACTIVATED_EVENT, syncPresetActivation);
     };
   }, []);
 
-  const pushMappedFrame = useCallback((pixels: Uint8Array) => {
-    const mapped = remapPixelsToTubeLayout(pixels, tubes, physicalLedCount);
-    pushFrame(mapped);
-  }, [physicalLedCount, pushFrame, tubes]);
+  const pushMappedFrame = useCallback((pixels: Uint8Array, target: 'static' | 'spatial') => {
+    const mapped = remapPixels(pixels, layout, physicalLedCount);
+    if (target === 'spatial') {
+      spatialStream.pushFrame(mapped);
+    } else {
+      effectStream.pushFrame(mapped);
+    }
+  }, [effectStream, layout, physicalLedCount, spatialStream]);
 
-  const handleTabChange = (tab: 'status' | 'effects' | 'audio') => {
+  const activateProgramDraft = useCallback((program: ProgramConfig) => {
+    saveProgramDraft(program);
+  }, []);
+
+  const handleTabChange = (tab: ControlTab) => {
     setActiveTab(tab);
-    if (tab !== 'effects') stopEffectRef.current();
+    if (tab !== 'static') stopEffectRef.current();
+    if (tab !== 'spatial') stopSpatialRef.current();
     if (tab !== 'audio') stopAudioRef.current();
   };
 
-  const previewLeds = [];
-  if (currentPixels) {
-    const previewCount = Math.floor(currentPixels.length / 3);
-    for (let i = 0; i < previewCount; i++) {
-      previewLeds.push({
-        r: currentPixels[i * 3],
-        g: currentPixels[i * 3 + 1],
-        b: currentPixels[i * 3 + 2],
-      });
-    }
-  }
+  const previewLedPoints = derivedLayout.ledPoints;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -252,100 +319,87 @@ export function Control() {
         <div>
           <h2>Control Center</h2>
           <p className="mb-0 text-sm text-muted-foreground">
-            Standalone WLED stays on hardware. Override modes stream custom visuals from the laptop.
+            Static patterns, reactive audio, and canvas-spatial programs all stream through the same mapped hardware chain.
           </p>
         </div>
         <div className="flex bg-surface border rounded p-1">
           <button className={`mode-btn ${activeTab === 'status' ? 'active' : ''}`} onClick={() => handleTabChange('status')}>Status</button>
-          <button className={`mode-btn ${activeTab === 'effects' ? 'active' : ''}`} onClick={() => handleTabChange('effects')}>Effects</button>
-          <button className={`mode-btn ${activeTab === 'audio' ? 'active' : ''}`} onClick={() => handleTabChange('audio')}>Audio</button>
+          <button className={`mode-btn ${activeTab === 'static' ? 'active' : ''}`} onClick={() => handleTabChange('static')}>Static</button>
+          <button className={`mode-btn ${activeTab === 'spatial' ? 'active' : ''}`} onClick={() => handleTabChange('spatial')}>Spatial</button>
+          <button className={`mode-btn ${activeTab === 'audio' ? 'active' : ''}`} onClick={() => handleTabChange('audio')}>Reactive</button>
         </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '2rem' }}>
         {activeTab === 'status' && (
           <StatusTab
-            driverState={driverState}
-            hwStatus={hwStatus}
-            fps={fps}
-            brightness={brightness}
-            send={send}
-            setMode={setMode}
             activeMode={activeMode}
+            brightness={brightness}
+            driverState={driverState}
+            fps={fps}
+            hwStatus={hwStatus}
             logicalLedCount={logicalLedCount}
             physicalLedCount={physicalLedCount}
+            issueCount={derivedLayout.issues.length}
+            send={send}
+            setMode={setMode}
           />
         )}
-        {activeTab === 'effects' && (
-          <EffectsTab
+        {activeTab === 'static' && (
+          <StaticTab
+            config={effectConfig}
             logicalLedCount={logicalLedCount}
-            pushFrame={pushMappedFrame}
+            onConfigChange={(next) => {
+              setEffectConfig(next);
+              activateProgramDraft({ kind: 'static', config: next });
+            }}
+            pushFrame={(pixels) => pushMappedFrame(pixels, 'static')}
             setMode={setMode}
             stopRef={stopEffectRef}
-            config={effectConfig}
-            onConfigChange={setEffectConfig}
+          />
+        )}
+        {activeTab === 'spatial' && (
+          <SpatialTab
+            config={spatialConfig}
+            ledPoints={previewLedPoints.length > 0 ? previewLedPoints : fallbackPoints(logicalLedCount)}
+            onConfigChange={(next) => {
+              setSpatialConfig(next);
+              activateProgramDraft({ kind: 'spatial', config: next });
+            }}
+            pushFrame={(pixels) => pushMappedFrame(pixels, 'spatial')}
+            setMode={setMode}
+            stopRef={stopSpatialRef}
           />
         )}
         {activeTab === 'audio' && (
           <AudioTab
+            config={reactiveConfig}
             logicalLedCount={logicalLedCount}
-            pushFrame={pushMappedFrame}
+            onConfigChange={(next) => {
+              setReactiveConfig(next);
+              activateProgramDraft({ kind: 'reactive', config: next });
+            }}
+            pushFrame={(pixels) => pushMappedFrame(pixels, 'static')}
             setMode={setMode}
             stopRef={stopAudioRef}
           />
         )}
       </div>
 
-      <div className="dashboard-card" style={{ marginTop: 'auto' }}>
-        <div className="flex items-center" style={{ justifyContent: 'space-between', marginBottom: '12px' }}>
-          <div className="card-label mb-0">Live Preview Strip</div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-mono text-muted-foreground">
-              Logical {logicalLedCount} / Physical {physicalLedCount}
-            </span>
-            <select
-              className="terminal-input"
-              style={{ padding: '2px 8px', fontSize: '10px', height: 'auto' }}
-              value={effectConfig.targetFps}
-              onChange={(e) => setEffectConfig((prev) => ({ ...prev, targetFps: Number(e.target.value) }))}
-            >
-              <option value={15}>15 FPS (Eco)</option>
-              <option value={30}>30 FPS (Standard)</option>
-              <option value={60}>60 FPS (Silky)</option>
-            </select>
-          </div>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            gap: '4px',
-            overflowX: 'hidden',
-            padding: '12px',
-            background: '#000',
-            borderRadius: '4px',
-            border: '1px solid rgba(0, 245, 255, 0.1)',
-            boxShadow: 'inset 0 0 10px rgba(0,0,0,0.8)',
-          }}
-        >
-          {previewLeds.length > 0 ? previewLeds.map((led, i) => (
-            <div
-              key={i}
-              style={{
-                width: `${Math.min(12, 100 / previewLeds.length)}%`,
-                minWidth: '4px',
-                height: '12px',
-                borderRadius: '2px',
-                backgroundColor: `rgb(${led.r},${led.g},${led.b})`,
-                boxShadow: led.r + led.g + led.b > 0 ? `0 0 6px rgba(${led.r},${led.g},${led.b},0.8)` : 'none',
-              }}
-            />
-          )) : (
-            <div className="w-full text-center text-xs font-mono text-muted-foreground py-2">No active pixel stream</div>
-          )}
-        </div>
-      </div>
     </div>
   );
+}
+
+function fallbackPoints(count: number): LayoutLedPoint[] {
+  return Array.from({ length: count }, (_, index) => ({
+    nodeId: 'fallback',
+    label: 'Linear Strip',
+    logicalIndex: index,
+    physicalIndex: index,
+    localIndex: index,
+    x: index * 14,
+    y: 0,
+  }));
 }
 
 interface StatusTabProps {
@@ -356,35 +410,35 @@ interface StatusTabProps {
   hwStatus: ConnectionStatus;
   logicalLedCount: number;
   physicalLedCount: number;
+  issueCount: number;
   send: ReturnType<typeof useDriver>['send'];
   setMode: ReturnType<typeof useDriver>['setMode'];
 }
 
 function StatusTab({
-  driverState,
-  hwStatus,
-  fps,
-  brightness,
-  send,
-  setMode,
   activeMode,
+  brightness,
+  driverState,
+  fps,
+  hwStatus,
   logicalLedCount,
   physicalLedCount,
+  issueCount,
+  send,
+  setMode,
 }: StatusTabProps) {
-  const targetIp = driverState?.targetIp ?? '—';
-
   return (
     <div className="studio-grid">
       <div className="dashboard-card">
         <div className="card-label">Connection</div>
         <div className="flex items-center gap-4 mt-3">
           <StatusBadge status={hwStatus} />
-          <span className="font-mono text-sm text-muted-foreground">{targetIp}:{driverState?.ddpPort ?? 4048}</span>
+          <span className="font-mono text-sm text-muted-foreground">{driverState?.targetIp ?? '—'}:{driverState?.ddpPort ?? 4048}</span>
         </div>
         <div className="flex items-center gap-4 mt-4">
           <div className="stat-block"><span className="stat-value text-primary">{fps}</span><span className="stat-label">FPS</span></div>
-          <div className="stat-block"><span className="stat-value">{logicalLedCount}</span><span className="stat-label">Logical LEDs</span></div>
-          <div className="stat-block"><span className="stat-value">{physicalLedCount}</span><span className="stat-label">Physical LEDs</span></div>
+          <div className="stat-block"><span className="stat-value">{logicalLedCount}</span><span className="stat-label">Mapped LEDs</span></div>
+          <div className="stat-block"><span className="stat-value">{issueCount}</span><span className="stat-label">Layout Issues</span></div>
         </div>
       </div>
 
@@ -398,7 +452,7 @@ function StatusTab({
           ))}
         </div>
         <p className="text-xs text-muted-foreground mt-4">
-          `standalone` means the controller is using WLED behavior. `override_*` means the laptop is actively driving pixels.
+          Override modes now assume the mapper defines the active LED order and emulator geometry.
         </p>
       </div>
 
@@ -409,14 +463,14 @@ function StatusTab({
           <span className="stat-label">Target</span>
         </div>
         <p className="text-xs text-muted-foreground mt-3">
-          USB is only for flashing/config. Live override uses local network DDP to reach WLED.
+          Physical span currently resolves to {physicalLedCount} LEDs after layout chaining.
         </p>
       </div>
 
       <div className="dashboard-card" style={{ gridColumn: 'span 2' }}>
         <div className="card-label">Brightness</div>
         <div className="flex items-center gap-4 mt-4 justify-center">
-          <Knob value={brightness} min={0} max={255} onChange={(val) => send('SET_BRIGHTNESS', { brightness: val })} />
+          <Knob value={brightness} min={0} max={255} onChange={(value) => send('SET_BRIGHTNESS', { brightness: value })} />
           <span className="font-mono text-primary text-lg font-bold">{brightness}</span>
         </div>
         <input
@@ -425,23 +479,23 @@ function StatusTab({
           max={255}
           value={brightness}
           className="brightness-slider w-full mt-4"
-          onChange={(e) => send('SET_BRIGHTNESS', { brightness: parseInt(e.target.value, 10) })}
+          onChange={(event) => send('SET_BRIGHTNESS', { brightness: parseInt(event.target.value, 10) })}
         />
       </div>
     </div>
   );
 }
 
-interface EffectsTabProps {
-  config: OverrideEffectConfig;
+interface StaticTabProps {
+  config: EffectProgramConfig;
   logicalLedCount: number;
-  onConfigChange: React.Dispatch<React.SetStateAction<OverrideEffectConfig>>;
+  onConfigChange: (config: EffectProgramConfig) => void;
   pushFrame: (pixels: Uint8Array) => void;
   setMode: ReturnType<typeof useDriver>['setMode'];
   stopRef: React.MutableRefObject<() => void>;
 }
 
-function EffectsTab({ logicalLedCount, pushFrame, setMode, stopRef, config, onConfigChange }: EffectsTabProps) {
+function StaticTab({ config, logicalLedCount, onConfigChange, pushFrame, setMode, stopRef }: StaticTabProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const tickRef = useRef(0);
   const rafRef = useRef<number | null>(null);
@@ -461,128 +515,171 @@ function EffectsTab({ logicalLedCount, pushFrame, setMode, stopRef, config, onCo
   }, [stop, stopRef]);
 
   useEffect(() => {
-    const applyConfig = (event: Event) => {
-      const detail = (event as CustomEvent<OverrideEffectConfig>).detail;
-      if (detail) {
-        onConfigChange(detail);
-        setIsPlaying(true);
-      }
-    };
-    window.addEventListener(OVERRIDE_EFFECT_EVENT, applyConfig);
-    return () => window.removeEventListener(OVERRIDE_EFFECT_EVENT, applyConfig);
-  }, [onConfigChange]);
-
-  useEffect(() => {
-    if (!isPlaying) {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      return;
-    }
-
+    if (!isPlaying) return;
     setMode('override_effect');
     let running = true;
 
     const loop = () => {
       if (!running) return;
-      const effect = EFFECTS[config.effectId] ?? EFFECTS[DEFAULT_OVERRIDE_EFFECT.effectId];
-      const effectConfig: EffectConfig = {
+      const pixels = (EFFECTS[config.effectId] ?? EFFECTS[DEFAULT_OVERRIDE_EFFECT.effectId]).fn(logicalLedCount, tickRef.current, {
         speed: config.speed,
         intensity: config.intensity,
         color1: hexToRgb(config.color1),
         color2: hexToRgb(config.color2),
-      };
-      const pixels = effect.fn(logicalLedCount, tickRef.current, effectConfig);
+      });
       pushFrame(pixels);
-      tickRef.current++;
+      tickRef.current += 1;
       rafRef.current = requestAnimationFrame(loop);
     };
 
     loop();
     return () => {
       running = false;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
   }, [config, isPlaying, logicalLedCount, pushFrame, setMode]);
 
   return (
     <div className="studio-grid">
-      <div className="dashboard-card" style={{ gridColumn: 'span 2' }}>
-        <div className="card-label">Select Generator</div>
+      <ProgramPaletteCard
+        color1={config.color1}
+        color2={config.color2}
+        onColor1Change={(value) => onConfigChange({ ...config, color1: value })}
+        onColor2Change={(value) => onConfigChange({ ...config, color2: value })}
+      />
+
+      <div className="dashboard-card">
+        <div className="card-label">Static Generator</div>
         <div className="effect-grid">
-          {Object.entries(EFFECTS).map(([key, { label }]) => (
-            <button
-              key={key}
-              className={`effect-tile ${config.effectId === key ? 'active' : ''}`}
-              onClick={() => onConfigChange((prev) => ({ ...prev, effectId: key as EffectId }))}
-            >
+          {Object.entries(EFFECTS).map(([key, value]) => (
+            <button key={key} className={`effect-tile ${config.effectId === key ? 'active' : ''}`} onClick={() => onConfigChange({ ...config, effectId: key as EffectId })}>
+              {value.label}
+            </button>
+          ))}
+        </div>
+        <ParameterControls
+          speed={config.speed}
+          intensity={config.intensity}
+          fps={config.targetFps}
+          onSpeedChange={(value) => onConfigChange({ ...config, speed: value })}
+          onIntensityChange={(value) => onConfigChange({ ...config, intensity: value })}
+          onFpsChange={(value) => onConfigChange({ ...config, targetFps: value })}
+        />
+        <button className={`action-btn w-full mt-2 ${isPlaying ? 'stop' : ''}`} onClick={() => setIsPlaying((prev) => !prev)}>
+          {isPlaying ? '■ Stop Static Program' : '▶ Start Static Program'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface SpatialTabProps {
+  config: SpatialProgramConfig;
+  ledPoints: LayoutLedPoint[];
+  onConfigChange: (config: SpatialProgramConfig) => void;
+  pushFrame: (pixels: Uint8Array) => void;
+  setMode: ReturnType<typeof useDriver>['setMode'];
+  stopRef: React.MutableRefObject<() => void>;
+}
+
+function SpatialTab({ config, ledPoints, onConfigChange, pushFrame, setMode, stopRef }: SpatialTabProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const tickRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+
+  const stop = useCallback(() => {
+    setIsPlaying(false);
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    setMode('standalone');
+  }, [setMode]);
+
+  useEffect(() => {
+    stopRef.current = stop;
+    return stop;
+  }, [stop, stopRef]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    setMode('override_effect');
+    let running = true;
+
+    const loop = () => {
+      if (!running) return;
+      pushFrame(getSpatialPixels(ledPoints, tickRef.current, config));
+      tickRef.current += 1;
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
+    loop();
+    return () => {
+      running = false;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [config, isPlaying, ledPoints, pushFrame, setMode]);
+
+  return (
+    <div className="studio-grid">
+      <ProgramPaletteCard
+        color1={config.color1}
+        color2={config.color2}
+        onColor1Change={(value) => onConfigChange({ ...config, color1: value })}
+        onColor2Change={(value) => onConfigChange({ ...config, color2: value })}
+      />
+
+      <div className="dashboard-card">
+        <div className="card-label">Spatial Generator</div>
+        <div className="effect-grid">
+          {[
+            ['linear', 'Linear Sweep'],
+            ['radial', 'Radial Bloom'],
+            ['orbit', 'Orbit'],
+          ].map(([key, label]) => (
+            <button key={key} className={`effect-tile ${config.effectId === key ? 'active' : ''}`} onClick={() => onConfigChange({ ...config, effectId: key as SpatialEffectId })}>
               {label}
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="dashboard-card">
-        <div className="card-label">Palette</div>
-        <div className="flex flex-col gap-4 mt-3">
-          <div className="color-control">
-            <label className="font-mono text-sm text-muted-foreground">Primary</label>
-            <div className="color-input-row">
-              <input type="color" value={config.color1} onChange={(e) => onConfigChange((prev) => ({ ...prev, color1: e.target.value }))} className="color-picker" />
-              <span className="font-mono text-sm">{config.color1.toUpperCase()}</span>
-            </div>
-          </div>
-          <div className="color-control">
-            <label className="font-mono text-sm text-muted-foreground">Secondary</label>
-            <div className="color-input-row">
-              <input type="color" value={config.color2} onChange={(e) => onConfigChange((prev) => ({ ...prev, color2: e.target.value }))} className="color-picker" />
-              <span className="font-mono text-sm">{config.color2.toUpperCase()}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="dashboard-card">
-        <div className="card-label">Parameters</div>
-        <div className="flex flex-col gap-5 mt-4">
-          <div className="slider-group">
-            <div className="flex justify-between w-full">
-              <label className="font-mono text-sm text-muted-foreground">Speed</label>
-              <span className="font-mono text-sm text-primary font-bold">{config.speed}</span>
-            </div>
-            <input type="range" min={1} max={100} value={config.speed} className="brightness-slider w-full" onChange={(e) => onConfigChange((prev) => ({ ...prev, speed: parseInt(e.target.value, 10) }))} />
-          </div>
-          <div className="slider-group">
-            <div className="flex justify-between w-full">
-              <label className="font-mono text-sm text-muted-foreground">Intensity</label>
-              <span className="font-mono text-sm text-primary font-bold">{config.intensity}</span>
-            </div>
-            <input type="range" min={1} max={100} value={config.intensity} className="brightness-slider w-full" onChange={(e) => onConfigChange((prev) => ({ ...prev, intensity: parseInt(e.target.value, 10) }))} />
-          </div>
-
-          <button className={`action-btn w-full mt-2 ${isPlaying ? 'stop' : ''}`} onClick={() => setIsPlaying((prev) => !prev)}>
-            {isPlaying ? '■ Stop Override' : '▶ Start Override'}
-          </button>
-        </div>
+        <ParameterControls
+          speed={config.speed}
+          intensity={config.intensity}
+          fps={config.targetFps}
+          onSpeedChange={(value) => onConfigChange({ ...config, speed: value })}
+          onIntensityChange={(value) => onConfigChange({ ...config, intensity: value })}
+          onFpsChange={(value) => onConfigChange({ ...config, targetFps: value })}
+        />
+        <p className="text-xs text-muted-foreground">Spatial programs read LED coordinates from the mapper canvas rather than assuming a straight strip.</p>
+        <button className={`action-btn w-full mt-2 ${isPlaying ? 'stop' : ''}`} onClick={() => setIsPlaying((prev) => !prev)}>
+          {isPlaying ? '■ Stop Spatial Program' : '▶ Start Spatial Program'}
+        </button>
       </div>
     </div>
   );
 }
 
 interface AudioTabProps {
+  config: ReactiveProgramConfig;
   logicalLedCount: number;
+  onConfigChange: (config: ReactiveProgramConfig) => void;
   pushFrame: (pixels: Uint8Array) => void;
   setMode: ReturnType<typeof useDriver>['setMode'];
   stopRef: React.MutableRefObject<() => void>;
 }
 
-function AudioTab({ logicalLedCount, pushFrame, setMode, stopRef }: AudioTabProps) {
+function AudioTab({ config, logicalLedCount, onConfigChange, pushFrame, setMode, stopRef }: AudioTabProps) {
   const [devices, setDevices] = useState<{ deviceId: string; label: string }[]>([]);
   const [selectedDevice, setSelectedDevice] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [bands, setBands] = useState<Float32Array>(new Float32Array(16));
   const [peak, setPeak] = useState(0);
-  const [gain, setGain] = useState(1.5);
   const bandCount = 16;
 
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -591,23 +688,20 @@ function AudioTab({ logicalLedCount, pushFrame, setMode, stopRef }: AudioTabProp
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    navigator.mediaDevices.enumerateDevices().then((all) => {
-      const inputs = all
-        .filter((d) => d.kind === 'audioinput')
-        .map((d) => ({ deviceId: d.deviceId, label: d.label || `Mic ${d.deviceId.slice(0, 6)}` }));
+    navigator.mediaDevices.enumerateDevices().then((devicesList) => {
+      const inputs = devicesList
+        .filter((device) => device.kind === 'audioinput')
+        .map((device) => ({ deviceId: device.deviceId, label: device.label || `Mic ${device.deviceId.slice(0, 6)}` }));
       setDevices([{ deviceId: 'system', label: 'System Audio / Display Capture' }, ...inputs]);
     }).catch(() => {});
   }, []);
 
   const stop = useCallback(() => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    streamRef.current?.getTracks().forEach((track) => track.stop());
     audioCtxRef.current?.close();
-    audioCtxRef.current = null;
     analyserRef.current = null;
+    audioCtxRef.current = null;
     streamRef.current = null;
     setIsListening(false);
     setBands(new Float32Array(bandCount));
@@ -620,121 +714,176 @@ function AudioTab({ logicalLedCount, pushFrame, setMode, stopRef }: AudioTabProp
     return stop;
   }, [stop, stopRef]);
 
-  const start = async () => {
-    if (!selectedDevice) return;
+  const start = useCallback(async () => {
+    stop();
+    const stream = selectedDevice === 'system'
+      ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+      : await navigator.mediaDevices.getUserMedia({ audio: selectedDevice ? { deviceId: { exact: selectedDevice } } : true });
 
-    try {
-      let stream: MediaStream;
-      if (selectedDevice === 'system') {
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      } else {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: selectedDevice } } });
+    streamRef.current = stream;
+    const audioCtx = new AudioContext();
+    audioCtxRef.current = audioCtx;
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.85;
+    analyserRef.current = analyser;
+    const source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+
+    const buffer = new Uint8Array(analyser.frequencyBinCount);
+    setIsListening(true);
+    setMode('override_audio');
+
+    const loop = () => {
+      analyser.getByteFrequencyData(buffer);
+      const values = new Float32Array(bandCount);
+      const stride = Math.floor(buffer.length / bandCount);
+      let maxValue = 0;
+
+      for (let band = 0; band < bandCount; band++) {
+        let total = 0;
+        for (let i = 0; i < stride; i++) {
+          total += buffer[band * stride + i] ?? 0;
+        }
+        const value = Math.min(1, ((total / Math.max(stride, 1)) / 255) * config.gain);
+        values[band] = value;
+        maxValue = Math.max(maxValue, value);
       }
 
-      streamRef.current = stream;
+      setBands(values);
+      setPeak(maxValue);
 
-      const ctx = new AudioContext();
-      audioCtxRef.current = ctx;
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.8;
-      analyser.minDecibels = -100;
-      analyser.maxDecibels = -10;
-      analyserRef.current = analyser;
-      source.connect(analyser);
+      const pixels = new Uint8Array(logicalLedCount * 3);
+      const c1 = hexToRgb(config.color1);
+      const c2 = hexToRgb(config.color2);
+      for (let i = 0; i < logicalLedCount; i++) {
+        const band = values[Math.min(bandCount - 1, Math.floor((i / Math.max(logicalLedCount, 1)) * bandCount))] ?? 0;
+        const [r, g, b] = mixColors(c2, c1, band);
+        pixels[i * 3] = r;
+        pixels[i * 3 + 1] = g;
+        pixels[i * 3 + 2] = b;
+      }
+      pushFrame(pixels);
 
-      setIsListening(true);
-      setMode('override_audio');
+      rafRef.current = requestAnimationFrame(loop);
+    };
 
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const loop = () => {
-        analyser.getByteFrequencyData(dataArray);
-        const newBands = new Float32Array(bandCount);
-        const step = Math.floor(analyser.frequencyBinCount / bandCount);
-        let peakVal = 0;
-
-        for (let i = 0; i < bandCount; i++) {
-          let sum = 0;
-          for (let j = 0; j < step; j++) {
-            sum += dataArray[i * step + j] / 255.0;
-          }
-          const avg = (sum / step) * gain;
-          newBands[i] = Math.min(1, avg);
-          if (avg > peakVal) {
-            peakVal = avg;
-          }
-        }
-
-        setBands(newBands);
-        setPeak(Math.min(1, peakVal));
-
-        const pixels = new Uint8Array(logicalLedCount * 3);
-        const ledsPerBand = Math.max(1, Math.floor(logicalLedCount / bandCount));
-
-        for (let band = 0; band < bandCount; band++) {
-          const val = newBands[band];
-          const hue = (band / bandCount) * 330;
-          const [r, g, b] = hslToRgb(hue, 100, Math.round(val * 50));
-          for (let led = 0; led < ledsPerBand; led++) {
-            const idx = (band * ledsPerBand + led) * 3;
-            if (idx + 2 < pixels.length) {
-              pixels[idx] = r;
-              pixels[idx + 1] = g;
-              pixels[idx + 2] = b;
-            }
-          }
-        }
-
-        pushFrame(pixels);
-        rafRef.current = requestAnimationFrame(loop);
-      };
-
-      loop();
-    } catch (err) {
-      console.error('Audio start failed', err);
-    }
-  };
+    loop();
+  }, [bandCount, config.color1, config.color2, config.gain, logicalLedCount, pushFrame, selectedDevice, setMode, stop]);
 
   return (
     <div className="studio-grid">
+      <ProgramPaletteCard
+        color1={config.color1}
+        color2={config.color2}
+        onColor1Change={(value) => onConfigChange({ ...config, color1: value })}
+        onColor2Change={(value) => onConfigChange({ ...config, color2: value })}
+      />
+
       <div className="dashboard-card">
-        <div className="card-label">Hardware Input</div>
-        <select className="terminal-input w-full mt-3" value={selectedDevice} onChange={(e) => setSelectedDevice(e.target.value)}>
-          <option value="" disabled>Select audio source...</option>
-          {devices.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}
-        </select>
-        <div className="flex items-center gap-4 mt-4 justify-between">
-          <StatusBadge status={isListening ? 'connected' : 'disconnected'} />
-          <button className={`action-btn ${isListening ? 'stop' : ''}`} onClick={isListening ? stop : start}>
-            {isListening ? '■ Stop Laptop Audio' : 'Listen'}
+        <div className="card-label">Reactive Input</div>
+        <div className="flex flex-col gap-4 mt-4">
+          <label className="font-mono text-sm text-muted-foreground">
+            Source
+            <select className="terminal-input w-full mt-1" value={selectedDevice} onChange={(event) => setSelectedDevice(event.target.value)}>
+              <option value="">Default Input</option>
+              {devices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>{device.label}</option>
+              ))}
+            </select>
+          </label>
+          <div className="slider-group">
+            <div className="flex justify-between w-full">
+              <label className="font-mono text-sm text-muted-foreground">Gain</label>
+              <span className="font-mono text-sm text-primary font-bold">{config.gain.toFixed(1)}x</span>
+            </div>
+            <input type="range" min={0.5} max={4} step={0.1} value={config.gain} className="brightness-slider w-full" onChange={(event) => onConfigChange({ ...config, gain: parseFloat(event.target.value) })} />
+          </div>
+          <div className="frequency-visualizer">
+            {Array.from({ length: bands.length }).map((_, index) => (
+              <div key={index} className="freq-bar-wrapper">
+                <FrequencyBar value={bands[index] ?? 0} />
+              </div>
+            ))}
+          </div>
+          <div className="mapper-readout">
+            <span>Peak</span>
+            <strong>{Math.round(peak * 100)}%</strong>
+          </div>
+          <button className={`action-btn w-full ${isListening ? 'stop' : ''}`} onClick={() => (isListening ? stop() : start())}>
+            {isListening ? '■ Stop Reactive Program' : '▶ Start Reactive Program'}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="dashboard-card">
-        <div className="card-label">Gain</div>
-        <div className="flex items-center gap-4 mt-4">
-          <input type="range" min={0.5} max={5} step={0.1} value={gain} className="brightness-slider flex-1" onChange={(e) => setGain(parseFloat(e.target.value))} />
-          <span className="font-mono text-primary font-bold">{gain.toFixed(1)}x</span>
+interface ProgramPaletteCardProps {
+  color1: string;
+  color2: string;
+  onColor1Change: (value: string) => void;
+  onColor2Change: (value: string) => void;
+}
+
+function ProgramPaletteCard({ color1, color2, onColor1Change, onColor2Change }: ProgramPaletteCardProps) {
+  return (
+    <div className="dashboard-card">
+      <div className="card-label">Palette</div>
+      <div className="flex flex-col gap-4 mt-3">
+        <div className="color-control">
+          <label className="font-mono text-sm text-muted-foreground">Primary</label>
+          <div className="color-input-row">
+            <input type="color" value={color1} onChange={(event) => onColor1Change(event.target.value)} className="color-picker" />
+            <span className="font-mono text-sm">{color1.toUpperCase()}</span>
+          </div>
         </div>
-        <div className="stat-block mt-4">
-          <span className="stat-value text-primary">{Math.round(peak * 100)}%</span>
-          <span className="stat-label">Peak Level</span>
+        <div className="color-control">
+          <label className="font-mono text-sm text-muted-foreground">Secondary</label>
+          <div className="color-input-row">
+            <input type="color" value={color2} onChange={(event) => onColor2Change(event.target.value)} className="color-picker" />
+            <span className="font-mono text-sm">{color2.toUpperCase()}</span>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="dashboard-card" style={{ gridColumn: 'span 2' }}>
-        <div className="card-label">Laptop Audio Spectrum</div>
-        <div className="frequency-bars mt-4">
-          {Array.from(bands).map((value, i) => (
-            <FrequencyBar key={i} value={value} className={i === 0 ? 'border border-primary/20' : undefined} />
-          ))}
+interface ParameterControlsProps {
+  speed: number;
+  intensity: number;
+  fps: number;
+  onSpeedChange: (value: number) => void;
+  onIntensityChange: (value: number) => void;
+  onFpsChange: (value: number) => void;
+}
+
+function ParameterControls({ speed, intensity, fps, onSpeedChange, onIntensityChange, onFpsChange }: ParameterControlsProps) {
+  return (
+    <div className="flex flex-col gap-5 mt-4">
+      <div className="slider-group">
+        <div className="flex justify-between w-full">
+          <label className="font-mono text-sm text-muted-foreground">Speed</label>
+          <span className="font-mono text-sm text-primary font-bold">{speed}</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-4">
-          This path is browser/USB capture feeding custom visuals. WLED line-in audio remains a separate standalone hardware mode.
-        </p>
+        <input type="range" min={1} max={100} value={speed} className="brightness-slider w-full" onChange={(event) => onSpeedChange(parseInt(event.target.value, 10))} />
       </div>
+      <div className="slider-group">
+        <div className="flex justify-between w-full">
+          <label className="font-mono text-sm text-muted-foreground">Intensity</label>
+          <span className="font-mono text-sm text-primary font-bold">{intensity}</span>
+        </div>
+        <input type="range" min={1} max={100} value={intensity} className="brightness-slider w-full" onChange={(event) => onIntensityChange(parseInt(event.target.value, 10))} />
+      </div>
+      <label className="font-mono text-sm text-muted-foreground">
+        Target FPS
+        <select className="terminal-input w-full mt-1" value={fps} onChange={(event) => onFpsChange(parseInt(event.target.value, 10))}>
+          <option value={15}>15 FPS</option>
+          <option value={30}>30 FPS</option>
+          <option value={60}>60 FPS</option>
+        </select>
+      </label>
     </div>
   );
 }

@@ -12,7 +12,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
     "@vandaled/ui-components": "*",
-    "@vandaled/ddp-engine": "*"
+    "@vandaled/ddp-engine": "*",
+    "@vandaled/layout-engine": "*"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

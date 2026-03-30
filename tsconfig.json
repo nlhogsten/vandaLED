@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/ddp-engine" },
     { "path": "./packages/audio-engine" },
+    { "path": "./packages/layout-engine" },
     { "path": "./packages/ui-components" },
     { "path": "./apps/driver" },
     { "path": "./apps/emulator" },

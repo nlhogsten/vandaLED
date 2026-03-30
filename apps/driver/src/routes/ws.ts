@@ -2,9 +2,10 @@ import { ServerWebSocket } from 'bun';
 import { state } from '../state';
 import { pipeline } from '../services/pixel-pipeline';
 import { PixelFrame } from '@vandaled/ddp-engine';
+import { normalizeHardwareLayout } from '@vandaled/layout-engine';
 
 export interface WsMessage {
-  type: 'PIXEL_FRAME' | 'WLED_STATE' | 'SET_MODE' | 'SET_BRIGHTNESS' | 'PING' | 'STATE';
+  type: 'PIXEL_FRAME' | 'WLED_STATE' | 'SET_MODE' | 'SET_BRIGHTNESS' | 'PING' | 'STATE' | 'LAYOUT_SYNC';
   payload?: unknown;
 }
 
@@ -135,6 +136,14 @@ export function handleWsMessage(ws: ServerWebSocket<unknown>, message: string | 
               body: JSON.stringify({ bri: state.brightness }),
             }).catch(() => {});
           }
+          broadcastState();
+        }
+        break;
+      }
+      case 'LAYOUT_SYNC': {
+        if (msg.payload && typeof msg.payload === 'object' && msg.payload !== null && Array.isArray((msg.payload as { nodes?: unknown[] }).nodes)) {
+          state.hardwareLayout = normalizeHardwareLayout(msg.payload);
+          broadcast({ type: 'LAYOUT_SYNC', payload: state.hardwareLayout });
           broadcastState();
         }
         break;

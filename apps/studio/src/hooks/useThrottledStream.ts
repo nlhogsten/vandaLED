@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { useDriver } from '../context/DriverContext';
 
+export const PREVIEW_FRAME_EVENT = 'vandaled:preview-frame';
+
 export function useThrottledStream(targetFps = 30) {
   const { sendPixelFrame } = useDriver();
   const [currentPixels, setCurrentPixels] = useState<Uint8Array | null>(null);
@@ -12,7 +14,9 @@ export function useThrottledStream(targetFps = 30) {
     
     if (now - lastSendTime.current >= interval) {
       sendPixelFrame(pixels, 0);
-      setCurrentPixels(new Uint8Array(pixels)); // Copy for react state
+      const next = new Uint8Array(pixels);
+      setCurrentPixels(next);
+      window.dispatchEvent(new CustomEvent(PREVIEW_FRAME_EVENT, { detail: next }));
       lastSendTime.current = now;
     }
   }, [sendPixelFrame, targetFps]);

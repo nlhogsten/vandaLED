@@ -1,6 +1,8 @@
 export type DriverMode = 'idle' | 'standalone' | 'wled_preset' | 'override_effect' | 'override_audio';
 export type DriverTransport = 'emulator' | 'network-wled';
 
+import { DEFAULT_LAYOUT, HardwareLayout } from '@vandaled/layout-engine';
+
 export interface DriverState {
   targetIp: string;
   ddpPort: number;
@@ -10,6 +12,7 @@ export interface DriverState {
   brightness: number;
   transport: DriverTransport;
   lastFrameAt: number | null;
+  hardwareLayout: HardwareLayout;
 }
 
 export function isEmulatorTarget(ip: string) {
@@ -27,4 +30,5 @@ export const state: DriverState = {
   brightness: 255,
   transport: isEmulatorTarget(targetIp) ? 'emulator' : 'network-wled',
   lastFrameAt: null,
+  hardwareLayout: DEFAULT_LAYOUT,
 };

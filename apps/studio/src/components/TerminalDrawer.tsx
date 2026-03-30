@@ -17,7 +17,6 @@ export function TerminalDrawer() {
     { id: nextId++, timestamp: Date.now(), type: 'info', text: 'Terminal initialized.' },
   ]);
   const [input, setInput] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const addLog = useCallback((type: LogEntry['type'], text: string) => {
@@ -40,10 +39,10 @@ export function TerminalDrawer() {
   }, [status, addLog]);
 
   useEffect(() => {
-    if (scrollRef.current && isOpen) {
+    if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logs, isOpen]);
+  }, [logs]);
 
   const handleSend = () => {
     const trimmed = input.trim();
@@ -59,30 +58,28 @@ export function TerminalDrawer() {
   };
 
   return (
-    <div className={`terminal-drawer ${isOpen ? 'open' : ''}`}>
-      <button className="terminal-toggle" onClick={() => setIsOpen(!isOpen)}>
-        {isOpen ? '↓ Close Terminal' : '↑ Open Terminal'}
-      </button>
-      
-      <div className="terminal-drawer-content">
-        <div ref={scrollRef} className="terminal-log">
-          {logs.map((entry) => (
-            <TerminalLine key={entry.id} timestamp={entry.timestamp} type={entry.type} text={entry.text} />
-          ))}
-        </div>
-        <div className="terminal-input-row" style={{ marginTop: '0', borderTop: '1px solid var(--border)', background: '#000', padding: '8px' }}>
-          <span className="terminal-prompt">{'>'}</span>
-          <input
-            type="text"
-            className="terminal-input"
-            style={{ border: 'none', background: 'transparent' }}
-            placeholder='Type JSON command, e.g. {"type":"PING"}'
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
-          />
-          <button className="action-btn" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={handleSend}>Send</button>
-        </div>
+    <div className="dock-panel dock-terminal">
+      <div className="flex items-center" style={{ justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div className="card-label mb-0">Terminal</div>
+        <span className="font-mono text-xs text-muted-foreground">{logs.length} logs</span>
+      </div>
+      <div ref={scrollRef} className="terminal-log">
+        {logs.map((entry) => (
+          <TerminalLine key={entry.id} timestamp={entry.timestamp} type={entry.type} text={entry.text} />
+        ))}
+      </div>
+      <div className="terminal-input-row dock-terminal-input">
+        <span className="terminal-prompt">{'>'}</span>
+        <input
+          type="text"
+          className="terminal-input"
+          style={{ border: 'none', background: 'transparent' }}
+          placeholder='Type JSON command, e.g. {"type":"PING"}'
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
+        />
+        <button className="action-btn" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={handleSend}>Send</button>
       </div>
     </div>
   );

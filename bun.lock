@@ -25,6 +25,7 @@
       "dependencies": {
         "@vandaled/audio-engine": "*",
         "@vandaled/ddp-engine": "*",
+        "@vandaled/layout-engine": "*",
         "hono": "^4.0.0",
       },
       "devDependencies": {
@@ -37,6 +38,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@vandaled/ddp-engine": "*",
+        "@vandaled/layout-engine": "*",
         "@vandaled/ui-components": "*",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
@@ -57,6 +59,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@vandaled/ddp-engine": "*",
+        "@vandaled/layout-engine": "*",
         "@vandaled/ui-components": "*",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
@@ -85,6 +88,13 @@
       "version": "1.0.0",
       "devDependencies": {
         "@types/node": "^20.0.0",
+        "typescript": "^5.0.0",
+      },
+    },
+    "packages/layout-engine": {
+      "name": "@vandaled/layout-engine",
+      "version": "1.0.0",
+      "devDependencies": {
         "typescript": "^5.0.0",
       },
     },
@@ -329,6 +339,8 @@
     "@vandaled/driver": ["@vandaled/driver@workspace:apps/driver"],
 
     "@vandaled/emulator": ["@vandaled/emulator@workspace:apps/emulator"],
+
+    "@vandaled/layout-engine": ["@vandaled/layout-engine@workspace:packages/layout-engine"],
 
     "@vandaled/studio": ["@vandaled/studio@workspace:apps/studio"],
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import type { HardwareLayout } from '@vandaled/layout-engine';
 
 export type DriverMode = 'idle' | 'standalone' | 'wled_preset' | 'override_effect' | 'override_audio';
 
@@ -11,6 +12,7 @@ export interface DriverStatus {
   brightness: number;
   transport: 'emulator' | 'network-wled';
   lastFrameAt: number | null;
+  hardwareLayout: HardwareLayout;
 }
 
 export interface UseDriverSocket {

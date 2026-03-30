@@ -9,7 +9,8 @@
   "dependencies": {
     "hono": "^4.0.0",
     "@vandaled/ddp-engine": "*",
-    "@vandaled/audio-engine": "*"
+    "@vandaled/audio-engine": "*",
+    "@vandaled/layout-engine": "*"
   },
   "devDependencies": {
     "@types/bun": "latest",

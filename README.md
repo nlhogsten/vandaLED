@@ -28,6 +28,7 @@ vandaLED/
 ├── packages/
 │   ├── ddp-engine/      # Shared DDP packet logic (header packing, UDP dispatch)
 │   ├── audio-engine/    # FFT analysis, frequency band mapping, audio pipeline
+│   ├── layout-engine/   # Shared hardware layout, chain derivation, pixel remapping
 │   └── ui-components/   # Shared Tailwind/Shadcn component library
 ├── firmware/
 │   ├── presets.json     # WLED preset backups (your saved visual programs)
@@ -54,14 +55,13 @@ The Bun/Hono server that runs on your laptop (or a Raspberry Pi for a permanent 
 
 ### `apps/studio` — The Studio
 A React/Vite single-page app with a dark, high-contrast "vandaLED" aesthetic. It provides:
-- A **Visual Pixel Mapper** — drag your tubes onto a canvas to match their physical layout
-- A **Color & Effect Picker** — design static or animated palettes
-- A **Frequency Visualizer** — see real-time FFT bands and map them to LED segments
-- A **Terminal Panel** — send raw JSON commands or run scripts directly from the UI
-- A **Preset Manager** — save, load, and rehydrate full Studio override states separately from WLED firmware presets
+- A **Visual Pixel Mapper** — build a movable node canvas that defines real segment geometry and inline LED chain order
+- A **Static / Spatial / Reactive Control Surface** — design conventional strip effects, mapper-coordinate effects, and browser-audio reactivity
+- A **Bottom-Docked Live Preview + Terminal** — toggle a simple output strip or raw driver socket log from anywhere in the app
+- A **Preset Manager** — save, load, and rehydrate Studio program states separately from WLED firmware presets, tagged to the current mapper layout
 
 ### `apps/emulator` — The Virtual Strip
-A lightweight React app that acts as a software-rendered LED strip. It listens for the same DDP packet stream the real hardware receives, rendering pixels as a responsive grid on screen. This means you can build and test 100% of your visual logic before the hardware arrives. When it does, you change one IP address.
+A lightweight React app that acts as a software-rendered hardware twin. It listens for the same DDP packet stream the real hardware receives and reads the same shared layout metadata as Studio, so the emulator renders the mapped segment geometry, labels, and physical index spans instead of a generic LED grid. This means you can build and test against the actual intended hardware arrangement before the hardware arrives. When it does, you change one IP address.
 
 ---
 
