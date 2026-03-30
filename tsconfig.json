@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/ddp-engine" },
+    { "path": "./packages/audio-engine" },
+    { "path": "./packages/ui-components" },
+    { "path": "./apps/driver" },
+    { "path": "./apps/emulator" },
+    { "path": "./apps/studio" }
+  ]
+}

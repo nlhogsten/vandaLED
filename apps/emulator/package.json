@@ -1,0 +1,28 @@
+{
+  "name": "@vandaled/emulator",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev:server": "bun run --watch server/index.ts",
+    "dev:client": "vite",
+    "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@vandaled/ui-components": "*",
+    "@vandaled/ddp-engine": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "vite": "^5.0.0",
+    "typescript": "^5.0.0",
+    "concurrently": "^8.0.0",
+    "@types/bun": "latest",
+    "@types/node": "latest"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@vandaled/audio-engine",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@vandaled/ddp-engine": "*"
+  }
+}

@@ -236,13 +236,13 @@ Split into two parts:
 
 **Bun UDP server** (`server/`):
 - Listens on `0.0.0.0:4048` for UDP DDP packets
-- Parses packets using `@vandaLED/ddp-engine`
+- Parses packets using `@vandaled/ddp-engine`
 - Broadcasts parsed pixel data to all connected WebSocket clients
 - Counts and reports incoming FPS
 
 **React Vite frontend** (`client/`):
 - Connects to the emulator WebSocket server
-- Renders a grid of `<PixelDot>` components (from `@vandaLED/ui-components`)
+- Renders a grid of `<PixelDot>` components (from `@vandaled/ui-components`)
 - Grid dimensions configurable (default: 10 rows × 10 columns = 100 LEDs)
 - Shows FPS counter, LED count, and connection status
 - Can be resized to simulate different strip configurations

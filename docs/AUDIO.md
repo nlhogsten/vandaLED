@@ -153,7 +153,7 @@ interface AnalyserConfig {
 ### Mapping Frequency to Pixels
 
 ```typescript
-import { mapFrequencyToPixels } from '@vandaLED/audio-engine';
+import { mapFrequencyToPixels } from '@vandaled/audio-engine';
 
 // Map 16 frequency bands to a 300-LED strip
 // Each band controls a proportional segment of LEDs
