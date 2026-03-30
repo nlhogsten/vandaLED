@@ -13,7 +13,7 @@
 - **Be fully programmable** — control visuals from a browser-based Studio UI, a terminal CLI, or raw TypeScript code
 - **Be version-controlled** — every preset, config, and piece of visual logic lives in this repo
 
-Think of it as three layers: the **hardware** (LED tubes + ESP32 controller), the **firmware** (WLED running on the controller), and the **software** (this monorepo).
+Think of it as three layers: the **hardware** (LED tubes + ESP32 controller), the **firmware** (WLED running on the controller), and the **software** (this monorepo). In practice, WLED owns standalone behavior on the controller while the laptop-hosted driver owns override behavior.
 
 ---
 
@@ -44,13 +44,13 @@ vandaLED/
 
 ## Apps Overview
 
-### `apps/driver` — The Brain
+### `apps/driver` — The Override Bridge
 The Bun/Hono server that runs on your laptop (or a Raspberry Pi for a permanent install). It:
 - Receives pixel data from the Studio UI via WebSockets
 - Runs FFT audio analysis on a connected audio source
 - Packs pixel arrays into DDP headers and blasts them over UDP to the hardware controller
 - Exposes a REST API (via Hono) for state management and preset control
-- Falls back gracefully when the hardware is offline (redirects to emulator)
+- Monitors whether the target is the emulator or a reachable WLED device on your LAN
 
 ### `apps/studio` — The Studio
 A React/Vite single-page app with a dark, high-contrast "vandaLED" aesthetic. It provides:
@@ -58,7 +58,7 @@ A React/Vite single-page app with a dark, high-contrast "vandaLED" aesthetic. It
 - A **Color & Effect Picker** — design static or animated palettes
 - A **Frequency Visualizer** — see real-time FFT bands and map them to LED segments
 - A **Terminal Panel** — send raw JSON commands or run scripts directly from the UI
-- A **Preset Manager** — save, load, and sync presets to `firmware/presets.json`
+- A **Preset Manager** — save, load, and rehydrate full Studio override states separately from WLED firmware presets
 
 ### `apps/emulator` — The Virtual Strip
 A lightweight React app that acts as a software-rendered LED strip. It listens for the same DDP packet stream the real hardware receives, rendering pixels as a responsive grid on screen. This means you can build and test 100% of your visual logic before the hardware arrives. When it does, you change one IP address.
@@ -96,6 +96,7 @@ bun run dev
 ```
 
 The driver defaults to targeting `localhost:4048` (the emulator) when no `WLED_IP` environment variable is set.
+USB on the controller is for flashing and config; live override is networked DDP/HTTP to WLED.
 
 ---
 

@@ -18,7 +18,7 @@
 ┌─────────────────────────▼───────────────────────────────────────┐
 │  TIER 2 — DRIVER (apps/driver)                                  │
 │  Bun + Hono                                                     │
-│  Role: Process audio, pack DDP packets, bridge UI to hardware.  │
+│  Role: Override bridge, pack DDP packets, bridge UI to hardware.│
 │  Runs on: Laptop (interactive) or Raspberry Pi (permanent)      │
 └─────────────────────────┬───────────────────────────────────────┘
                           │  WebSockets — pixel frames & state
@@ -67,7 +67,7 @@ Studio UI ──(WebSocket)──► Driver ──(DDP/UDP)──► QuinLED ─
                      or system audio capture)
 ```
 
-This transition is seamless and requires no configuration change on the hardware side.
+This transition is seamless and requires no configuration change on the hardware side. The hardware does not need to "know" whether USB or Wi-Fi should be used for live control because the current live-control design is Wi-Fi/LAN only; USB is used for flashing, setup, and maintenance.
 
 ---
 

@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
-import { state } from '../state';
+import { state, DriverMode } from '../state';
+
+const VALID_MODES: DriverMode[] = ['idle', 'standalone', 'wled_preset', 'override_effect', 'override_audio'];
 
 const api = new Hono();
 
@@ -9,7 +11,7 @@ api.get('/state', (c) => c.json(state));
 
 api.post('/mode', async (c) => {
   const { mode } = await c.req.json();
-  if (['stream', 'audio', 'preset', 'idle'].includes(mode)) {
+  if (VALID_MODES.includes(mode)) {
     state.activeMode = mode;
     return c.json({ mode: state.activeMode });
   }

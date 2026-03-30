@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-export type DriverMode = 'stream' | 'audio' | 'preset' | 'idle';
+export type DriverMode = 'idle' | 'standalone' | 'wled_preset' | 'override_effect' | 'override_audio';
 
 export interface DriverStatus {
   targetIp: string;
@@ -9,16 +9,18 @@ export interface DriverStatus {
   activeMode: DriverMode;
   isHardwareConnected: boolean;
   brightness: number;
+  transport: 'emulator' | 'network-wled';
+  lastFrameAt: number | null;
 }
 
 export interface UseDriverSocket {
   status: 'connected' | 'disconnected' | 'connecting';
   driverState: DriverStatus | null;
   fps: number;
-  send: (type: string, payload?: any) => void;
+  send: (type: string, payload?: unknown) => void;
   sendPixelFrame: (pixels: Uint8Array, offset?: number) => void;
   setMode: (mode: DriverMode) => void;
-  onMessage: (handler: (msg: any) => void) => () => void;
+  onMessage: (handler: (msg: unknown) => void) => () => void;
 }
 
 const DRIVER_WS_URL = 'ws://localhost:3000';
@@ -27,7 +29,7 @@ const PING_INTERVAL = 3000;
 
 export function useDriverSocket(): UseDriverSocket {
   const wsRef = useRef<WebSocket | null>(null);
-  const handlersRef = useRef<Set<(msg: any) => void>>(new Set());
+  const handlersRef = useRef<Set<(msg: unknown) => void>>(new Set());
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,6 +72,9 @@ export function useDriverSocket(): UseDriverSocket {
         if (msg.type === 'PONG' && msg.status) {
           setDriverState(msg.status);
         }
+        if (msg.type === 'STATE' && msg.payload) {
+          setDriverState(msg.payload);
+        }
         if (msg.type === 'FPS') {
           setFps(msg.fps ?? 0);
         }
@@ -93,7 +98,7 @@ export function useDriverSocket(): UseDriverSocket {
     };
   }, [connect]);
 
-  const send = useCallback((type: string, payload?: any) => {
+  const send = useCallback((type: string, payload?: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type, payload }));
     }
@@ -119,7 +124,7 @@ export function useDriverSocket(): UseDriverSocket {
     send('SET_MODE', { mode });
   }, [send]);
 
-  const onMessage = useCallback((handler: (msg: any) => void) => {
+  const onMessage = useCallback((handler: (msg: unknown) => void) => {
     handlersRef.current.add(handler);
     return () => { handlersRef.current.delete(handler); };
   }, []);

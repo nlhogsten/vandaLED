@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { api } from './routes/api';
 import { wled } from './routes/wled';
 import { handleWsMessage, addClient, removeClient } from './routes/ws';
+import { startHardwareMonitor } from './services/hardware-monitor';
 
 const port = parseInt(process.env.PORT || '3000');
 const app = new Hono();
@@ -33,5 +34,7 @@ const server = Bun.serve({
     }
   }
 });
+
+startHardwareMonitor();
 
 console.log(`vandaLED driver running on port ${server.port}`);

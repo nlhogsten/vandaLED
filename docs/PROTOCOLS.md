@@ -243,7 +243,7 @@ All messages are JSON with a `type` discriminator:
 
 ### Connection Management
 
-The Driver exposes a WebSocket endpoint at `ws://localhost:3000/ws`. The Studio connects on startup and reconnects automatically if the connection drops. The Emulator connects to the same endpoint.
+The Driver accepts a WebSocket upgrade on the driver server at `ws://localhost:3000`. The Studio connects on startup and reconnects automatically if the connection drops.
 
 ---
 

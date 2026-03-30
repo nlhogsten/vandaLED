@@ -1,17 +1,30 @@
+export type DriverMode = 'idle' | 'standalone' | 'wled_preset' | 'override_effect' | 'override_audio';
+export type DriverTransport = 'emulator' | 'network-wled';
+
 export interface DriverState {
   targetIp: string;
   ddpPort: number;
   ledCount: number;
-  activeMode: 'stream' | 'audio' | 'preset' | 'idle';
+  activeMode: DriverMode;
   isHardwareConnected: boolean;
   brightness: number;
+  transport: DriverTransport;
+  lastFrameAt: number | null;
 }
 
+export function isEmulatorTarget(ip: string) {
+  return ip === '127.0.0.1' || ip === 'localhost';
+}
+
+const targetIp = process.env.WLED_IP || '127.0.0.1';
+
 export const state: DriverState = {
-  targetIp: process.env.WLED_IP || '127.0.0.1',
+  targetIp,
   ddpPort: parseInt(process.env.DDP_PORT || '4048'),
   ledCount: parseInt(process.env.LED_COUNT || '100'),
-  activeMode: 'idle',
+  activeMode: isEmulatorTarget(targetIp) ? 'idle' : 'standalone',
   isHardwareConnected: false,
-  brightness: 255
+  brightness: 255,
+  transport: isEmulatorTarget(targetIp) ? 'emulator' : 'network-wled',
+  lastFrameAt: null,
 };

@@ -24,7 +24,9 @@ Once running, simply open your browser to **http://localhost:5173**.
 
 ## 🎛️ The Control Center
 
-The **Control** page is where all the action happens. It consists of three tabs, and a **Live Preview Strip** at the bottom. Only one tab (Effects or Audio) can be actively streaming pixels to the hardware at a time. Switching tabs automatically stops the previous stream.
+The **Control** page is where all the action happens. It consists of three tabs, and a **Live Preview Strip** at the bottom. Only one tab (Effects or Audio) can be actively streaming pixels to the hardware at a time. Switching tabs automatically stops the previous stream. The key distinction is:
+- **Standalone** = WLED on the controller is running its own preset/effect.
+- **Override** = the laptop is streaming custom pixels through the driver.
 
 ### 1. Status Tab
 This tab gives you a high-level overview of the driver's connection to the physical (or emulated) hardware.
@@ -61,18 +63,18 @@ In the Mapper:
 2. Select a tube and update its **Start Index** and **LED count**.
 3. All changes auto-save local to your browser!
 
-*Note: Future updates will enable the Driver to reshape effects based on these spatial positions, but currently it's for keeping track of your indices.*
+The mapper now affects override rendering order by remapping linear effect output into the physical LED ranges you assign per tube.
 
 ---
 
 ## 💾 Presets
 
-Presets save your favorite configurations so you don't have to keep dialing them in.
+Presets save your favorite **Studio override configurations** so you don't have to keep dialing them in.
 
 1. Once you have an effect you like, head to the **Presets** page.
 2. Type a name and click **Save**.
 3. The preset will be added to the list. You can trigger it by clicking the '▶' icon on the preset row.
-4. **Syncing**: Because browser data can be reset, click **Export JSON** to download your presets. Store these in the `/firmware/presets.json` file inside the repository so they are immortalized in git!
+4. **Syncing**: These presets are separate from WLED firmware presets. Export them as Studio JSON for version control, and keep WLED backups in `/firmware/presets.json`.
 
 ---
 

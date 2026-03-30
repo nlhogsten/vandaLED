@@ -43,6 +43,7 @@ Thumbs.db
 .cache/
 .parcel-cache/
 .turbo/
+*.tsbuildinfo
 
 # Tests
 coverage/

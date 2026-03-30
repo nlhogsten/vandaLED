@@ -27,8 +27,8 @@ export function TerminalDrawer() {
 
   useEffect(() => {
     const unsub = onMessage((msg) => {
-      // ignore PIXEL_FRAME as it floods the log
-      if (msg.type !== 'PIXEL_FRAME') {
+      const typedMsg = msg as { type?: string };
+      if (typedMsg.type !== 'PIXEL_FRAME') {
         addLog('receive', JSON.stringify(msg));
       }
     });

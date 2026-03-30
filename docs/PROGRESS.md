@@ -12,8 +12,8 @@
 - **Effects Engine**: 8 built-in effect generators (Solid Color, Rainbow Cycle, Pulse, Color Chase, Dual Gradient, Sparkle, Fire, Ocean Wave) with dual color pickers, speed/intensity sliders, and a play/stop button that streams pixel frames to the driver at 60fps via `requestAnimationFrame`.
 - **Audio Reactivity**: Full Audio page with mic device enumeration, device selector, live FFT frequency visualizer (16 bands), adjustable gain, peak level meter, and real-time hue-shifted frequency-to-pixel mapping streamed to the driver.
 - **Terminal**: Scrollable WebSocket message log color-coded by type (INFO/SEND/RECEIVE/ERROR), input field that parses JSON commands, auto-scroll, and 200-line ring buffer.
-- **Presets Manager**: Save/load/edit/delete presets with `localStorage` persistence, JSON import/export for syncing to `firmware/presets.json`, and one-click preset activation.
-- **Pixel Mapper V2**: Canvas-based tube layout editor with drag-and-drop positioning, add/remove tubes, grid overlay, LED dot visualization along tube bodies, and selected tube info display (LED count, start index, position, rotation).
+- **Presets Manager**: Save/load/edit/delete full Studio override effect presets with persisted effect id, colors, speed, intensity, target FPS, JSON import/export, and one-click activation back into Control.
+- **Pixel Mapper V2**: Canvas-based tube layout editor with drag-and-drop positioning, editable LED ranges/rotation, persistence, and layout-aware override remapping into physical LED indices.
 - **Driver WS → DDP Pipeline**: The driver's WebSocket handler now fully reconstructs `PixelFrame` objects from incoming `PIXEL_FRAME` messages and forwards them through the `PixelPipeline → DdpDispatcher → UDP` chain to the emulator/hardware. FPS is metered and broadcast back to all connected Studio clients.
 - **CORS & API Expansion**: Driver entry point now uses Hono's `cors` middleware for cross-origin Studio requests. REST API expanded with `/api/state`, `/api/brightness`, and proper validation.
 
@@ -28,6 +28,6 @@
 ## Next Steps
 1. **WLED UDP Discovery**: Implement standard UDP Broadcast discovery in the Driver so real WLED controllers can be dynamically found on the network without `.env` hardcoding.
 2. **Pixel Mapper Persistence**: Save tube layouts to localStorage and allow export/import. Add rotation controls and tube resizing.
-3. **Preset ↔ Effects Integration**: Link presets to specific effect configs (effect type, colors, speed, intensity) so activating a preset launches its full effect, not just a solid color.
+3. **Standalone/Override UX Polish**: Clarify WLED standalone state vs laptop override state in the UI and add more explicit hardware discovery/health messaging.
 4. **Audio Band-to-Segment Mapping Editor**: Allow users to assign specific frequency bands to specific LED segments in the Audio page rather than using a fixed linear mapping.
 5. **Emulator Grid Resizing**: Allow the emulator to dynamically resize its pixel grid to match the configured LED count and tube layout.
