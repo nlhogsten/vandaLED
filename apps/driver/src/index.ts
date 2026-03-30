@@ -1,10 +1,14 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { api } from './routes/api';
 import { wled } from './routes/wled';
-import { handleWsMessage } from './routes/ws';
+import { handleWsMessage, addClient, removeClient } from './routes/ws';
 
 const port = parseInt(process.env.PORT || '3000');
 const app = new Hono();
+
+// Enable CORS for Studio dev server
+app.use('*', cors());
 
 app.route('/api', api);
 app.route('/wled', wled);
@@ -20,12 +24,14 @@ const server = Bun.serve({
       handleWsMessage(ws, message);
     },
     open(ws) {
+      addClient(ws);
       console.log('Studio connected via WS');
     },
     close(ws, code, message) {
+      removeClient(ws);
       console.log('Studio disconnected');
     }
   }
 });
 
-console.log(`Driver server running on port ${server.port}`);
+console.log(`vandaLED driver running on port ${server.port}`);
