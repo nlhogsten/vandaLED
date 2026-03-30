@@ -1,33 +1,66 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
-      <nav style={{ width: '200px', borderRight: '1px solid #333', padding: '20px' }}>
-        <h2 style={{ color: '#00F5FF', marginBottom: '20px' }}>vandaLED Studio</h2>
-        <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <li><Link to="/" style={{ color: 'white', textDecoration: 'none' }}>Dashboard</Link></li>
-          <li><Link to="/mapper" style={{ color: 'white', textDecoration: 'none' }}>Pixel Mapper</Link></li>
-          <li><Link to="/effects" style={{ color: 'white', textDecoration: 'none' }}>Effects</Link></li>
-          <li><Link to="/audio" style={{ color: 'white', textDecoration: 'none' }}>Audio</Link></li>
-          <li><Link to="/terminal" style={{ color: 'white', textDecoration: 'none' }}>Terminal</Link></li>
-          <li><Link to="/presets" style={{ color: 'white', textDecoration: 'none' }}>Presets</Link></li>
-        </ul>
+    <div className="flex w-full" style={{ height: '100vh' }}>
+      <nav className="studio-nav">
+        <div className="studio-nav-header">
+          <span className="glow-text font-bold">vanda</span>LED
+        </div>
+        <div className="flex-col gap-2">
+          <NavLink to="/" className={({ isActive }) => `studio-nav-item ${isActive ? 'active' : ''}`}>
+            Dashboard
+          </NavLink>
+          <NavLink to="/mapper" className={({ isActive }) => `studio-nav-item ${isActive ? 'active' : ''}`}>
+            Pixel Mapper
+          </NavLink>
+          <NavLink to="/effects" className={({ isActive }) => `studio-nav-item ${isActive ? 'active' : ''}`}>
+            Effects
+          </NavLink>
+          <NavLink to="/audio" className={({ isActive }) => `studio-nav-item ${isActive ? 'active' : ''}`}>
+            Audio
+          </NavLink>
+          <NavLink to="/terminal" className={({ isActive }) => `studio-nav-item ${isActive ? 'active' : ''}`}>
+            Terminal
+          </NavLink>
+          <NavLink to="/presets" className={({ isActive }) => `studio-nav-item ${isActive ? 'active' : ''}`}>
+            Presets
+          </NavLink>
+        </div>
       </nav>
-      <main style={{ flex: 1, padding: '20px', overflow: 'auto' }}>
-        {children}
+      <main className="main-content">
+        <div className="glass-panel" style={{ minHeight: '100%' }}>
+          {children}
+        </div>
       </main>
     </div>
   );
 }
 
-function Dashboard() { return <div><h1>Dashboard</h1><p>Status overview & quick controls.</p></div>; }
-function Mapper() { return <div><h1>Pixel Mapper</h1><p>Canvas-based tube layout editor.</p></div>; }
-function Effects() { return <div><h1>Effects</h1><p>Color picker, effect selector.</p></div>; }
-function Audio() { return <div><h1>Audio</h1><p>Real-time frequency visualizer.</p></div>; }
-function Terminal() { return <div><h1>Terminal</h1><p>Scrollable log of all WebSocket messages.</p></div>; }
-function Presets() { return <div><h1>Presets</h1><p>Save/load named presets.</p></div>; }
+function Dashboard() { 
+  return (
+    <div>
+      <h2>Dashboard</h2>
+      <p className="mb-1 text-lg">System Status Overview</p>
+      <div className="studio-grid" style={{ marginTop: '2rem' }}>
+        <div className="dashboard-card">
+          <h3 className="text-primary font-mono mb-1">Controller</h3>
+          <p>Connected / 60 FPS</p>
+        </div>
+        <div className="dashboard-card">
+          <h3 className="text-primary font-mono mb-1">Active Effect</h3>
+          <p>Plasma Glow</p>
+        </div>
+      </div>
+    </div>
+  ); 
+}
+function Mapper() { return <div><h2>Pixel Mapper</h2><p>Canvas-based tube layout editor.</p></div>; }
+function Effects() { return <div><h2>Effects</h2><p>Color picker, effect selector.</p></div>; }
+function Audio() { return <div><h2>Audio</h2><p>Real-time frequency visualizer.</p></div>; }
+function Terminal() { return <div><h2>Terminal</h2><p>Scrollable log of all WebSocket messages.</p></div>; }
+function Presets() { return <div><h2>Presets</h2><p>Save/load named presets.</p></div>; }
 
 export default function App() {
   return (

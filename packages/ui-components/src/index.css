@@ -1,0 +1,225 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  --background: #050505;
+  --foreground: #ffffff;
+  --primary: #00F5FF;
+  --primary-glow: rgba(0, 245, 255, 0.4);
+  --secondary: #39FF14;
+  --muted: #1a1a1a;
+  --muted-foreground: #888888;
+  --border: rgba(0, 245, 255, 0.15);
+  --surface: #0a0a0a;
+  
+  font-family: 'Inter', sans-serif;
+  color: var(--foreground);
+  background: var(--background);
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--background);
+  /* Brutalist subtle noise texture */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root { 
+  width: 100%; 
+  display: flex; 
+  flex-direction: column; 
+}
+
+::selection {
+  background: var(--primary);
+  color: #000;
+}
+
+/* Typography Base */
+h1, h2, h3, h4 { font-weight: 800; margin-top: 0; letter-spacing: -0.02em; }
+h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+h2 { font-size: 1.75rem; margin-bottom: 1rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.1em; }
+p { color: var(--muted-foreground); line-height: 1.6; }
+
+/* Utility Classes - Tailwind Stubs in Vanilla CSS */
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-lg { font-size: 1.125rem; }
+.font-bold { font-weight: bold; }
+.uppercase { text-transform: uppercase; }
+
+/* Colors */
+.bg-background { background-color: var(--background); }
+.bg-surface { background-color: var(--surface); }
+.bg-primary { background-color: var(--primary); }
+.bg-muted { background-color: var(--muted); }
+.bg-black { background-color: #000; }
+.text-primary { color: var(--primary); }
+.text-muted-foreground { color: var(--muted-foreground); }
+.text-foreground { color: var(--foreground); }
+.border-primary { border-color: var(--primary); }
+.border-muted { border-color: var(--border); }
+.text-white { color: #fff; }
+.text-black { color: #000; }
+.bg-green-500 { background-color: var(--secondary); }
+.bg-red-500 { background-color: #FF0055; box-shadow: 0 0 10px rgba(255, 0, 85, 0.4); }
+.bg-cyan-400 { background-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+
+/* Layout & Sizing */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+.justify-end { justify-content: flex-end; }
+.items-center { align-items: center; }
+.w-4 { width: 1rem; }
+.h-32 { height: 8rem; }
+.w-full { width: 100%; }
+.w-16 { width: 4rem; }
+.h-16 { height: 4rem; }
+.w-1 { width: 0.25rem; }
+.h-1\/2 { height: 50%; }
+.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.mb-1 { margin-bottom: 0.25rem; }
+
+/* Borders & Display */
+.rounded { border-radius: 0.25rem; }
+.rounded-full { border-radius: 9999px; }
+.border { border: 1px solid var(--border); }
+.border-2 { border: 2px solid var(--border); }
+.relative { position: relative; }
+.absolute { position: absolute; }
+.top-1\/2 { top: 50%; }
+.left-1\/2 { left: 50%; }
+.origin-bottom { transform-origin: bottom; }
+.overflow-auto { overflow: auto; }
+
+/* Animations & Transitions */
+.transition-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+.duration-75 { transition-duration: 75ms; }
+.duration-200 { transition-duration: 200ms; }
+.opacity-50 { opacity: 0.5; }
+
+/* Custom Studio Glass/Premium Classes */
+.glass-panel {
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.studio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.glow-text {
+  text-shadow: 0 0 15px var(--primary-glow);
+}
+
+.studio-nav {
+  width: 260px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-nav-header {
+  color: var(--primary);
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+  text-transform: lowercase;
+  letter-spacing: -0.05em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.studio-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.studio-nav-item:hover, .studio-nav-item.active {
+  background: rgba(0, 245, 255, 0.05);
+  color: var(--primary);
+  border-color: var(--border);
+  box-shadow: inset 0 0 12px rgba(0, 245, 255, 0.05);
+  text-shadow: 0 0 8px rgba(0, 245, 255, 0.3);
+}
+
+.main-content {
+  flex: 1;
+  padding: 48px;
+  background: transparent;
+  overflow: auto;
+}
+
+.dashboard-card {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(20,20,20,0.8) 0%, rgba(10,10,10,0.9) 100%);
+  padding: 24px;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 245, 255, 0.1);
+  border-color: rgba(0, 245, 255, 0.4);
+}
+
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0.5;
+}
+
+/* Base custom interactive element */
+.action-btn {
+  background: rgba(0, 245, 255, 0.1);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: bold;
+}
+
+.action-btn:hover {
+  background: var(--primary);
+  color: #000;
+  box-shadow: 0 0 20px var(--primary-glow);
+}

@@ -45,19 +45,23 @@ export default function App() {
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'monospace' }}>
-      <h1>vandaLED Emulator</h1>
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '20px' }}>
-        <StatusBadge status={status === 'connected' ? 'emulating' : 'disconnected'} />
-        <span>FPS: {fps}</span>
-        <span>LED Context: {ledCount}</span>
-      </div>
-      
-      {/* 10 x 10 grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 16px)', gap: '4px' }}>
-        {leds.map((led, i) => (
-          <PixelDot key={i} r={led.r} g={led.g} b={led.b} size={16} />
-        ))}
+    <div className="main-content" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div className="glass-panel w-full" style={{ maxWidth: 800 }}>
+        <h2 className="glow-text text-center">vandaLED Emulator</h2>
+        <div className="flex gap-4 justify-center items-center mb-1" style={{ marginBottom: '2rem' }}>
+          <StatusBadge status={status === 'connected' ? 'emulating' : 'disconnected'} />
+          <span className="font-mono text-muted-foreground">FPS: <span className="text-primary font-bold">{fps}</span></span>
+          <span className="font-mono text-muted-foreground">Context: <span className="text-white font-bold">{ledCount} LEDs</span></span>
+        </div>
+        
+        {/* LED display grid */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem', background: '#000', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.8)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 20px)', gap: '6px' }}>
+            {leds.map((led, i) => (
+              <PixelDot key={i} r={led.r} g={led.g} b={led.b} size={20} />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

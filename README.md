@@ -73,6 +73,7 @@ A lightweight React app that acts as a software-rendered LED strip. It listens f
 | [`docs/HARDWARE.md`](./docs/HARDWARE.md) | Bill of materials, wiring diagrams, assembly instructions |
 | [`docs/PROTOCOLS.md`](./docs/PROTOCOLS.md) | DDP, WLED JSON API, E1.31/Art-Net — protocols explained for developers |
 | [`docs/AUDIO.md`](./docs/AUDIO.md) | Audio pipeline — FFT, frequency band mapping, wired line-in vs. Web Audio API |
+| [`docs/PROGRESS.md`](./docs/PROGRESS.md) | The current developmental state, accomplishments, and roadmap of next steps for the framework |
 | [`docs/AI_INIT_PROMPT.md`](./docs/AI_INIT_PROMPT.md) | The AI agent prompt to scaffold the full project in Cursor/Windsurf |
 
 ---
