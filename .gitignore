@@ -1,6 +1,49 @@
-node_modules
-dist
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Build outputs
+dist/
+out/
+build/
+.next/
+
+# Environment variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 *.local
-.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 bun.lockb
+*.log
+
+# Editor & OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Caches
+.eslintcache
+.stylelintcache
+.awcache/
+.cache/
+.parcel-cache/
+.turbo/
+
+# Tests
+coverage/
+.nyc_output/
